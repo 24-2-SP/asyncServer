@@ -79,7 +79,7 @@ int init()
         exit(1);
     }
 
-    if (listen(sfd, 1000) == -1)
+    if (listen(sfd, MAX_EVENTS) == -1)
     {
         perror("listen failed");
         close(sfd);

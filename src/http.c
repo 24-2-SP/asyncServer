@@ -1,6 +1,6 @@
 #include "../include/main.h"
 
-void handle_client_request(int cfd, int epoll_fd)
+void handle_clietc_request(int cfd, int epoll_fd)
 {
     char buf[BUFFER_SIZE];
 
@@ -51,26 +51,25 @@ void handle_client_request(int cfd, int epoll_fd)
         return;
     }
     *path_end = '\0';
-    //요청 메소드 처리
+    // 요청 메소드 처리
     if (strncmp(buf, "GET", 3) == 0)
     {
-        handle_get(cfd, path_start);
+        get(cfd, path_start);
     }
     else if (strncmp(buf, "HEAD", 4) == 0)
     {
-        handle_head(cfd, path_start);
+        head(cfd, path_start);
     }
     else
     {
         response(cfd, 400, "Bad Request", "text/plain", "Invalid Request");
     }
 
-    close_connection(cfd, epoll_fd); //연결 종료
+    close_connection(cfd, epoll_fd); // 연결 종료
 }
 
-
-void handle_get(int cfd, const char *fname)
-//이미지와 일반파일 나눠서 처리
+void get(int cfd, const char *fname)
+// 이미지와 일반파일 나눠서 처리
 {
     char path[256];
     snprintf(path, sizeof(path), "file/%s", fname);
@@ -159,9 +158,9 @@ void handle_get(int cfd, const char *fname)
     }
 }
 
-void handle_head(int cfd, const char *fname)
+void head(int cfd, const char *fname)
 {
-    //헤더만 전송
+    // 헤더만 전송
     char path[100];
     snprintf(path, sizeof(path), "file/%s", fname);
 

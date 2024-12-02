@@ -2,7 +2,7 @@
 
 int main()
 {
-    int sfd = init_server();
+    int sfd = init();
     set_non_blocking(sfd); // 서버 소켓을 비차단 모드로 설정
 
     int epoll_fd = epoll_create1(0);
@@ -49,7 +49,7 @@ int main()
             }
             else if (events[i].events & EPOLLIN)
             { // 요청 처리
-                handle_client_request(events[i].data.fd, epoll_fd);
+                request(events[i].data.fd, epoll_fd);
             }
         }
     }

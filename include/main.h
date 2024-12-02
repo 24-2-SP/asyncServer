@@ -21,16 +21,16 @@
 #define CHUNK_SIZE 65536
 extern atomic_int active_connections;
 
-int init_server();
+int init();
 void handle_connection(int sfd, int epoll_fd);
 void close_connection(int cfd, int epoll_fd);
-void handle_client_request(int cfd, int epoll_fd);
-void handle_get(int cfd, const char *fname);
-void handle_head(int cfd, const char *fname);
+void request(int cfd, int epoll_fd);
+void get(int cfd, const char *fname);
+void head(int cfd, const char *fname);
 void response(int cfd, int status, const char *statusM, const char *types, const char *body);
 const char *type(const char *fname);
 void set_non_blocking(int fd);
-void handle_sigchld(int sig);
+void sigchld(int sig);
 ssize_t send_data(int cfd, const char *data, size_t length);
 
 #endif // MAIN_H

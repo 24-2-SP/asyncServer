@@ -1,6 +1,6 @@
 #include "../include/main.h"
 
-void handle_clietc_request(int cfd, int epoll_fd)
+void request(int cfd, int epoll_fd)
 {
     char buf[BUFFER_SIZE];
 

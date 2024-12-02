@@ -49,7 +49,7 @@ void response(int cfd, int status, const char *statusM, const char *types, const
 }
 
 // 서버 초기화
-int init_server()
+int init()
 {
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sfd == -1)

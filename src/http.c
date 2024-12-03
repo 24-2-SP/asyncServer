@@ -68,8 +68,96 @@ void request(int cfd, int epoll_fd)
     close_connection(cfd, epoll_fd); // 연결 종료
 }
 
+// void get(int cfd, const char *fname)
+// {
+//     char path[256];
+//     snprintf(path, sizeof(path), "file/%s", fname);
+
+//     FILE *fp = fopen(path, "rb");
+//     if (!fp)
+//     {
+//         response(cfd, 404, "Not Found", "text/plain", "File not found");
+//         return;
+//     }
+
+//     const char *mime_type = type(path);
+//     if (strncmp(mime_type, "image/", 6) == 0)
+//     {
+//         // HTTP 응답 헤더 전송
+//         char header[512];
+//         snprintf(header, sizeof(header),
+//                  "HTTP/1.1 200 OK\r\n"
+//                  "Content-Type: %s\r\n"
+//                  "Transfer-Encoding: chunked\r\n"
+//                  "\r\n",
+//                  mime_type);
+//         if (write(cfd, header, strlen(header)) == -1)
+//         {
+//             perror("Failed to send header");
+//             fclose(fp);
+//             close(cfd);
+//             return;
+//         }
+
+//         // 청크 단위로 파일 읽기 및 전송
+//         char buffer[CHUNK_SIZE];
+//         size_t bytes_read;
+//         while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+//         {
+//             // 청크 크기 전송
+//             char chunk_header[32];
+//             int header_len = snprintf(chunk_header, sizeof(chunk_header), "%zx\r\n", bytes_read);
+
+//             if (send_data(cfd, chunk_header, header_len) == -1 || send_data(cfd, buffer, bytes_read) == -1 || send_data(cfd, "\r\n", 2) == -1)
+//             {
+//                 perror("Failed to send chunk data");
+//                 break;
+//             }
+//         }
+
+//         if (send_data(cfd, "0\r\n\r\n", 5) == -1)
+//         {
+//             perror("Failed to send chunk data");
+//         }
+//     }
+//     else
+//     {
+//         // 일반 파일 처리 (전체 전송)
+//         fseek(fp, 0, SEEK_END);
+//         long file_size = ftell(fp);
+//         fseek(fp, 0, SEEK_SET);
+
+//         char *buf = (char *)malloc(file_size);
+//         if (!buf)
+//         {
+//             perror("Memory allocation failed");
+//             fclose(fp);
+//             response(cfd, 500, "Internal Server Error", "text/plain", "Unable to allocate memory");
+//             return;
+//         }
+
+//         fread(buf, 1, file_size, fp);
+//         fclose(fp);
+
+//         // HTTP 헤더 전송
+//         char header[512];
+//         snprintf(header, sizeof(header),
+//                  "HTTP/1.1 200 OK\r\n"
+//                  "Content-Type: %s\r\n"
+//                  "Content-Length: %ld\r\n"
+//                  "\r\n",
+//                  mime_type, file_size);
+
+//         if (send_data(cfd, header, strlen(header)) == -1 ||
+//             send_data(cfd, buf, file_size) == -1)
+//         {
+//             perror("Failed to send file data");
+//         }
+//         free(buf);
+//     }
+// }
+
 void get(int cfd, const char *fname)
-// 이미지와 일반파일 나눠서 처리
 {
     char path[256];
     snprintf(path, sizeof(path), "file/%s", fname);
@@ -82,80 +170,63 @@ void get(int cfd, const char *fname)
     }
 
     const char *mime_type = type(path);
-    if (strncmp(mime_type, "image/", 6) == 0)
+
+    // HTTP 응답 헤더 작성
+    char header[512];
+    snprintf(header, sizeof(header),
+             "HTTP/1.1 200 OK\r\n"
+             "Content-Type: %s\r\n"
+             "Transfer-Encoding: chunked\r\n"
+             "\r\n",
+             mime_type);
+
+    // 응답 헤더 전송
+    if (send_data(cfd, header, strlen(header)) == -1)
     {
-        // HTTP 응답 헤더 전송
-        char header[512];
-        snprintf(header, sizeof(header),
-                 "HTTP/1.1 200 OK\r\n"
-                 "Content-Type: %s\r\n"
-                 "Transfer-Encoding: chunked\r\n"
-                 "\r\n",
-                 mime_type);
-        if (write(cfd, header, strlen(header)) == -1)
+        perror("Failed to send response header");
+        fclose(fp);
+        close(cfd);
+        return;
+    }
+
+    // 청크 단위로 파일 읽고 전송
+    char buffer[CHUNK_SIZE];
+    size_t bytes_read;
+
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+    {
+        // 청크 크기 전송
+        char chunk_header[32];
+        int chunk_len = snprintf(chunk_header, sizeof(chunk_header), "%zx\r\n", bytes_read);
+
+        if (send_data(cfd, chunk_header, chunk_len) == -1)
         {
-            perror("Failed to send header");
-            fclose(fp);
-            close(cfd);
-            return;
+            perror("Failed to send chunk header");
+            break;
         }
 
-        // 청크 단위로 파일 읽기 및 전송
-        char buffer[CHUNK_SIZE];
-        size_t bytes_read;
-        while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
-        {
-            // 청크 크기 전송
-            char chunk_header[32];
-            int header_len = snprintf(chunk_header, sizeof(chunk_header), "%zx\r\n", bytes_read);
-
-            if (send_data(cfd, chunk_header, header_len) == -1 || send_data(cfd, buffer, bytes_read) == -1 || send_data(cfd, "\r\n", 2) == -1)
-            {
-                perror("Failed to send chunk data");
-                break;
-            }
-        }
-
-        if (send_data(cfd, "0\r\n\r\n", 5) == -1)
+        // 청크 데이터 전송
+        if (send_data(cfd, buffer, bytes_read) == -1)
         {
             perror("Failed to send chunk data");
+            break;
+        }
+
+        // 청크 종료 (\r\n)
+        if (send_data(cfd, "\r\n", 2) == -1)
+        {
+            perror("Failed to send chunk end");
+            break;
         }
     }
-    else
+
+    // 마지막 청크 전송
+    if (send_data(cfd, "0\r\n\r\n", 5) == -1)
     {
-        // 일반 파일 처리 (전체 전송)
-        fseek(fp, 0, SEEK_END);
-        long file_size = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
-
-        char *buf = (char *)malloc(file_size);
-        if (!buf)
-        {
-            perror("Memory allocation failed");
-            fclose(fp);
-            response(cfd, 500, "Internal Server Error", "text/plain", "Unable to allocate memory");
-            return;
-        }
-
-        fread(buf, 1, file_size, fp);
-        fclose(fp);
-
-        // HTTP 헤더 전송
-        char header[512];
-        snprintf(header, sizeof(header),
-                 "HTTP/1.1 200 OK\r\n"
-                 "Content-Type: %s\r\n"
-                 "Content-Length: %ld\r\n"
-                 "\r\n",
-                 mime_type, file_size);
-
-        if (send_data(cfd, header, strlen(header)) == -1 ||
-            send_data(cfd, buf, file_size) == -1)
-        {
-            perror("Failed to send file data");
-        }
-        free(buf);
+        perror("Failed to send final chunk");
     }
+
+    fclose(fp);
 }
 
 void head(int cfd, const char *fname)
